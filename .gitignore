@@ -40,3 +40,14 @@ docs/reflact_overview.html
 docs/render_ablation_paper_tables.py
 docs/让*
 .gradio/
+
+# Understand-Anything knowledge graph (generated)
+.understand-anything/
+
+# Handoff docs (session artifacts)
+docs/handoff/
+
+# Root-level test artifacts
+/solution.py
+.codex/
+/claude-1000/
