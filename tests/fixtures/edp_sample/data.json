@@ -1,0 +1,37 @@
+[
+    {
+        "id": "fund_001",
+        "query": "我月收入2万，风险偏好中等，想定投3只基金，帮我推荐",
+        "task_type": "fund_recommendation",
+        "ground_truth": "推荐沪深300ETF、中证500ETF、债券基金组合",
+        "rubrics": ""
+    },
+    {
+        "id": "fund_002",
+        "query": "我有50万闲钱，希望稳健增值，推荐什么产品",
+        "task_type": "asset_allocation",
+        "ground_truth": "建议60%债券+30%股票基金+10%货币基金",
+        "rubrics": ""
+    },
+    {
+        "id": "fund_003",
+        "query": "退休父母有100万养老钱，怎么投资安全又有点收益",
+        "task_type": "retirement_planning",
+        "ground_truth": "推荐国债+高等级债券基金+少量分红股票基金",
+        "rubrics": ""
+    },
+    {
+        "id": "fund_004",
+        "query": "刚毕业两年，月薪1.5万，怎么开始理财",
+        "task_type": "beginner_planning",
+        "ground_truth": "建议从货币基金开始，逐步配置指数基金",
+        "rubrics": ""
+    },
+    {
+        "id": "fund_005",
+        "query": "市场大跌，我的基金亏了15%，应该赎回还是继续持有",
+        "task_type": "risk_management",
+        "ground_truth": "评估投资目标和时间跨度后决定，长期投资者可考虑坚持定投",
+        "rubrics": ""
+    }
+]

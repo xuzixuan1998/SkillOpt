@@ -13,7 +13,7 @@ You have two tools:
        OUTPUT_PATH = "<exact output path given in the task>"
    Then perform the manipulation and save the result to OUTPUT_PATH.
    Use only: standard library, openpyxl, pandas.
-3. Run `python solution.py` via `bash` and verify the output was created.
+3. Run `python3 solution.py` via `bash` and verify the output was created.
 4. Fix any errors and re-run until the output is correct.
 5. Once OUTPUT_PATH exists and is correct, stop calling tools.
 

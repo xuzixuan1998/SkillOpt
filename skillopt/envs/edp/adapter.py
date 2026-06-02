@@ -3,22 +3,22 @@
 将 SkillOpt 训练循环连接到 EDPAgent。
 实现 :class:`~skillopt.envs.base.EnvAdapter` 的 4 个抽象方法。
 """
+
 from __future__ import annotations
 
-import json
 import os
 
 from skillopt.datasets.base import BatchSpec
 from skillopt.envs.base import EnvAdapter
 from skillopt.envs.edp.dataloader import EDPDataLoader
-from skillopt.envs.edp.rollout import run_batch
 from skillopt.gradient.reflect import run_minibatch_reflect
 
-
-# TODO: 定义 EDPAgent 的任务类型列表（用于 per-category 指标分解）
 TASK_TYPES: list[str] = [
-    # "task_type_a",
-    # "task_type_b",
+    "fund_recommendation",
+    "asset_allocation",
+    "retirement_planning",
+    "beginner_planning",
+    "risk_management",
 ]
 
 
@@ -84,7 +84,6 @@ class EDPAdapter(EnvAdapter):
         seed: int = 42,
         limit: int = 0,
     ) -> None:
-        # TODO: 保存所有配置参数
         self.max_turns = max_turns
         self.exec_timeout = exec_timeout
         self.workers = workers
@@ -94,29 +93,27 @@ class EDPAdapter(EnvAdapter):
         self.minibatch_size = minibatch_size
         self.edit_budget = edit_budget
 
-        # TODO: 初始化 DataLoader
-        # self.dataloader = EDPDataLoader(
-        #     split_dir=split_dir,
-        #     data_path=data_path,
-        #     split_mode=split_mode,
-        #     split_ratio=split_ratio,
-        #     split_seed=split_seed,
-        #     split_output_dir=split_output_dir,
-        #     seed=seed,
-        #     limit=limit,
-        # )
+        self.dataloader = EDPDataLoader(
+            split_dir=split_dir,
+            data_path=data_path,
+            split_mode=split_mode,
+            split_ratio=split_ratio,
+            split_seed=split_seed,
+            split_output_dir=split_output_dir,
+            seed=seed,
+            limit=limit,
+        )
 
     # ── Lifecycle ──────────────────────────────────────────────────────────
 
     def setup(self, cfg: dict) -> None:
         """Trainer 启动时调用一次，用于初始化 dataloader 等。"""
         super().setup(cfg)
-        # TODO: self.dataloader.setup(cfg)
+        self.dataloader.setup(cfg)
 
     def get_dataloader(self):
         """返回 DataLoader 实例。"""
-        # TODO: return self.dataloader
-        raise NotImplementedError
+        return self.dataloader
 
     # ── 必须实现的 4 个抽象方法 ───────────────────────────────────────────
 
@@ -128,9 +125,8 @@ class EDPAdapter(EnvAdapter):
         list[dict]
             采样的 task item 列表，每个 dict 至少包含 ``"id"`` 字段。
         """
-        # TODO: batch = self.dataloader.build_train_batch(batch_size, seed)
-        # TODO: return batch.payload
-        raise NotImplementedError
+        batch = self.dataloader.build_train_batch(batch_size=batch_size, seed=seed, **kwargs)
+        return self.build_env_from_batch(batch, **kwargs)
 
     def build_eval_env(self, env_num: int, split: str, seed: int, **kwargs):
         """构建评估环境 — 返回评估集的 task items。
@@ -148,14 +144,12 @@ class EDPAdapter(EnvAdapter):
         -------
         list[dict]
         """
-        # TODO: batch = self.dataloader.build_eval_batch(env_num, split, seed)
-        # TODO: return batch.payload
-        raise NotImplementedError
+        batch = self.dataloader.build_eval_batch(env_num=env_num, split=split, seed=seed, **kwargs)
+        return self.build_env_from_batch(batch, **kwargs)
 
     def build_env_from_batch(self, batch: BatchSpec, **kwargs):
         """从 BatchSpec 构建 items 列表（静态数据集场景）。"""
-        # TODO: return list(batch.payload or [])
-        raise NotImplementedError
+        return list(batch.payload or [])
 
     def rollout(
         self,
@@ -207,7 +201,7 @@ class EDPAdapter(EnvAdapter):
     ) -> list[dict | None]:
         """分析 rollout 结果，产出补丁列表。
 
-        大多数情况下不需要自己实现，直接调用通用的 ``run_minibatch_reflect()``。
+        委托给通用的 ``run_minibatch_reflect()``。
         框架会根据 ``_env_name`` 自动加载 ``prompts/analyst_error.md``
         和 ``prompts/analyst_success.md``。
 
@@ -222,7 +216,6 @@ class EDPAdapter(EnvAdapter):
         step_buffer_context = kwargs.get("step_buffer_context", "")
         meta_skill_context = kwargs.get("meta_skill_context", "")
 
-        # TODO: 取消注释即可使用通用 minibatch reflect
         return run_minibatch_reflect(
             results=results,
             skill_content=skill_content,

@@ -1,0 +1,18 @@
+_base_: ../_base_/default.yaml
+
+train:
+  train_size: 0          # 自动推导
+  batch_size: 40
+
+gradient:
+  minibatch_size: 8
+
+optimizer:
+  learning_rate: 4
+
+env:
+  name: edp
+  skill_init: skillopt/envs/edp/skills/initial.md
+  split_mode: split_dir
+  max_turns: 10           # 待 EDP 确定后调整
+  exec_timeout: 300       # 同上

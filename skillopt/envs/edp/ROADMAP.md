@@ -8,21 +8,20 @@
 ## 第一阶段：数据集准备
 
 ### 1.1 确定数据集格式
-- [ ] 确定每个 task item 的字段结构（必须含 `id`，其余按需）
-- [ ] 准备原始数据集文件（JSON/JSONL 格式）
-- 👤 ___
+- [x] 确定每个 task item 的字段结构：`id`, `query`, `task_type`, `ground_truth`, `rubrics`
+- [x] 准备原始数据集文件（JSON 格式，5 条 sample items 已就绪）
+- 👤 Zixuan Xu (2026-06-01)
 
 ### 1.2 数据切分
-- [ ] 决定切分方式：手工切分 或 让 SkillOpt 按比例自动切分
-  - 手工：准备 `train/items.json`、`val/items.json`、`test/items.json`
-  - 自动：提供 `data_path` + `split_ratio`（如 `2:1:7`）
-- [ ] 验证切分后的数据可以正确加载
-- 👤 ___
+- [x] 支持两种切分方式：`split_mode="split_dir"`（手工）和 `split_mode="ratio"`（自动）
+- [x] 验证切分后的数据可以正确加载（14 dataloader tests pass）
+- 👤 Zixuan Xu (2026-06-01)
 
 ### 1.3 评估标准定义
-- [ ] 确定 EDPAgent 任务的评判标准（hard score: 完全正确=1 否则=0，soft score: 部分正确 0.0~1.0）
-- [ ] 特殊情况：如果原评估逻辑较复杂或依赖外部 API，建议提前考虑
-- 👤 ___
+- [x] 确定评判接口：`evaluate(predicted, ground_truth, item) -> {"ok": bool, "reason": str, "score": float}`
+  - `ok` → hard score (0/1)，`score` → soft score (0.0-1.0)
+- [ ] 实现具体评估逻辑（阻塞项 B1/B3：需要 EDP agent 实际输出格式）
+- 👤 同事负责 evaluator 实现
 
 ---
 
@@ -30,10 +29,10 @@
 
 > 文件位置：`skillopt/envs/edp/`
 
-### 2.1 `dataloader.py` — 数据加载器
-- [ ] 继承 `SplitDataLoader`（如果数据格式为标准 JSON）
-- [ ] 如果数据有特殊加载逻辑，覆写 `load_raw_items()` 或 `load_split_items()`
-- 👤 ___
+### 2.1 `dataloader.py` — 数据加载器 ✅
+- [x] 继承 `SplitDataLoader`，基类 `_load_json_or_jsonl()` 已支持 JSON array / JSONL / 嵌套 dict 三种格式
+- [x] **无需覆写 `load_raw_items()`** — 基类行为完全满足 EDP 数据格式需求
+- 👤 Zixuan Xu (2026-06-01, 简化于 2026-06-02)
 
 ### 2.2 `agent.py` — Agent 调用封装
 - [ ] 实现 `run_agent(item, skill_content, **kwargs) -> dict`
@@ -42,6 +41,8 @@
 - [ ] conversation 格式选择（三选一，见下方说明）
 - [ ] 处理超时、异常、重试
 - [ ] 将 EDPAgent 产生的输出文件保存到 `out_dir/predictions/<task_id>/`
+- 🔒 **阻塞项 B1**: EDP Rollout HTTP API (endpoint / schema / 认证 / 超时)
+- 🔒 **阻塞项 B3**: EDPAgent 轨迹格式 + 工具列表
 - 👤 ___
 
 #### conversation 格式说明
@@ -55,32 +56,34 @@
 > 这三种格式在 Reflect 阶段会被 `fmt_trajectory()` 统一归一化，选最接近 EDPAgent 原始输出的一种即可。
 
 ### 2.3 `rollout.py` — 批量执行
-- [ ] 实现 `process_one(item, ...) -> dict`：单个任务执行+评估，返回 RolloutResult 兼容 dict
-- [ ] 实现 `run_batch(items, ...) -> list[dict]`：批量执行，支持并发
-- [ ] 每完成一个 task，将 conversation 保存到 `predictions/<task_id>/conversation.json`
-- [ ] 将汇总结果写入 `results.jsonl`
-- [ ] 支持断点续跑（resume）
-- 👤 ___
+- [x] 实现 `process_one(item, ...) -> dict`：单任务执行框架已就绪（目录创建、结果结构、异常处理）
+- [x] 实现 `run_batch(items, ...) -> list[dict]`：并发 + 断点续跑 + 超时处理已完整实现
+- [x] 每完成一个 task，将 conversation 保存到 `predictions/<task_id>/conversation.json`（路径逻辑就绪，保存代码注释中）
+- [x] 将汇总结果写入 `results.jsonl`（已实现）
+- [x] 支持断点续跑（resume，已实现）
+- [x] `task_id` 异常安全：缺失 id 时返回 `{"id": "unknown", ...}` 而非崩溃
+- [ ] 取消 agent + evaluator 调用注释，串联全流程
+- 🔒 **阻塞项 B1/B3**: 等 agent.py 和 evaluator.py 就绪
+- 👤 Zixuan Xu (2026-06-01/02)
 
 ### 2.4 `evaluator.py` — 评估逻辑
-- [ ] 实现 `evaluate(prediction, ground_truth, ...) -> {"ok": bool, "reason": str}`
-- [ ] hard score 归约：所有测试用例通过 → 1，否则 → 0
-- [ ] soft score 归约：通过用例数 / 总用例数（或其他自定义比例）
-- 👤 ___
+- [x] 接口定义：`evaluate(predicted, ground_truth, item) -> {"ok": bool, "reason": str, "score": float}`
+- [ ] 实现具体评估逻辑（硬/软评分规则）
+- 👤 同事负责
+- 🔒 **阻塞项 B1/B3**: 需了解 EDP agent 的实际输出格式
 
 ### 2.5 `adapter.py` — 环境适配器
-- [ ] 继承 `EnvAdapter`，实现 4 个抽象方法：
-  - `build_train_env(batch_size, seed)` → 返回 task item 列表
-  - `build_eval_env(env_num, split, seed)` → 返回 task item 列表
-  - `rollout(env_manager, skill_content, out_dir)` → 批量执行并返回结果
-  - `reflect(results, skill_content, out_dir)` → 调用 `run_minibatch_reflect()`
-  - `get_task_types()` → 返回任务类型列表
-- 👤 ___
+- [x] 继承 `EnvAdapter`，实现 4 个抽象方法：
+  - [x] `build_train_env(batch_size, seed)` ✅
+  - [x] `build_eval_env(env_num, split, seed)` ✅
+  - [ ] `rollout(env_manager, skill_content, out_dir)` — 代码骨架就绪，注释中，等 agent/evaluator
+  - [x] `reflect(results, skill_content, out_dir)` ✅ (委托 `run_minibatch_reflect()`)
+  - [x] `get_task_types()` ✅ (5 个金融推荐子类型)
+- 👤 Zixuan Xu (2026-06-01/02)
 
 ### 2.6 `reflect.py` — 分析 prompt 配置（可选）
-- [ ] 如果需要自定义 Reflect 阶段的 prompt 加载逻辑，在此实现
-- [ ] 大多数情况下不需要修改此文件，靠 `prompts/analyst_error.md` 和 `prompts/analyst_success.md` 即可
-- 👤 ___
+- [x] 无需修改 — 直接委托 `run_minibatch_reflect()`，靠 prompts/ 目录下的 analyst 模板
+- 👤 Zixuan Xu (2026-06-01)
 
 ---
 
@@ -92,38 +95,41 @@
 - [ ] 告诉 Optimizer LLM 如何从 EDPAgent 失败轨迹中提取共性模式
 - [ ] 包含输出 JSON schema（patch 格式）
 - [ ] 如果任务有领域特定概念，在这里解释
+- 🔒 **阻塞项 B3**: 需要 EDPAgent 轨迹格式 + 工具列表后才能写
 - 👤 ___
 
 ### 3.2 `analyst_success.md` — 成功分析 prompt
 - [ ] 告诉 Optimizer LLM 如何从 EDPAgent 成功轨迹中提取强化策略
 - [ ] 包含输出 JSON schema
+- 🔒 **阻塞项 B3**: 同上
 - 👤 ___
 
-### 3.3 `skills/initial.md` — 初始 skill prompt
-- [ ] 写一个初始的 skill prompt 模板（EDPAgent 的 system prompt）
-- [ ] 这是优化的起点，写清楚 agent 应该遵循的规则和策略
-- 👤 ___
+### 3.3 `skills/initial.md` — 初始 skill prompt ✅
+- [x] 金融推荐场景的初始 skill prompt，含 Core Rules / Workflow / Common Pitfalls / Examples 四节
+- [x] 已包含 `<!-- SLOW_UPDATE_START -->` / `<!-- SLOW_UPDATE_END -->` 标记
+- 👤 Zixuan Xu (2026-06-01)
 
 ---
 
 ## 第四阶段：训练配置与测试
 
-### 4.1 训练配置文件
-- [ ] 写一个 `configs/edp.yaml` 或 `configs/edp.json`
-  - 指定 `env: edp`、`data_path`、`out_root` 等关键参数
-  - 指定模型后端（`REFLACT_MODEL_BACKEND=codex` 或 `claude`）
-- 👤 ___
+### 4.1 训练配置文件 ✅
+- [x] `configs/edp/default.yaml` — 继承 `_base_/default.yaml`，`env.name=edp`
+- 👤 Zixuan Xu (2026-06-01)
 
 ### 4.2 冒烟测试
-- [ ] 单 task rollout 测试：确保 EDPAgent 调用正常，conversation.json 正确生成
+- [x] 单元测试：43 tests pass，覆盖 dataloader / adapter / rollout / config / skill
+- [ ] 单 task rollout 测试：需等 agent/evaluator 就绪
 - [ ] 小批量（5-10 task）训练测试：确保 Reflect → Aggregate → Select → Update 完整链路跑通
 - [ ] 对照 `outputs/` 目录检查所有中间产物是否正确保存
-- 👤 ___
+- 🔒 **阻塞项 B1/B2/B3**: 全链路测试需 EDP API 就绪
+- 👤 Zixuan Xu (部分完成于 2026-06-01/02)
 
 ### 4.3 正式训练
 - [ ] 全量数据训练
 - [ ] 监控训练曲线（hard/soft score 变化）
 - [ ] 调参（edit_budget、minibatch_size、learning rate 等）
+- 🔒 等待 Phase 2 + Phase 3 全部解除阻塞
 - 👤 ___
 
 ---

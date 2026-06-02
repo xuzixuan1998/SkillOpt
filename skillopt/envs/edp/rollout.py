@@ -4,6 +4,7 @@
 - ``process_one()``:  单任务执行 + 评估
 - ``run_batch()``:    批量执行 + 并发 + 断点续跑
 """
+
 from __future__ import annotations
 
 import json
@@ -16,8 +17,8 @@ from concurrent.futures import (
     wait,
 )
 
-
 # ── 单任务执行 ──────────────────────────────────────────────────────────────
+
 
 def process_one(
     item: dict,
@@ -55,11 +56,21 @@ def process_one(
         - ``"fail_reason"``, ``"task_type"``, ``"task_description"``
         - ``"n_turns"``, ``"target_system_prompt"``, ``"target_user_prompt"``
     """
-    task_id = str(item["id"])
-
-    # TODO: 从 item 中提取任务信息
-    # instruction = item["instruction"]
-    # task_type = item.get("task_type", "default")
+    try:
+        task_id = str(item["id"])
+    except (KeyError, TypeError) as exc:
+        return {
+            "id": "unknown",
+            "ok": False,
+            "hard": 0,
+            "soft": 0.0,
+            "n_turns": 0,
+            "fail_reason": f"invalid item: {type(exc).__name__}: {exc}",
+            "task_type": "",
+            "task_description": "",
+            "phase": "error",
+            "error": traceback.format_exc(),
+        }
 
     # 初始化结果 dict
     result = {
@@ -136,6 +147,7 @@ def process_one(
 
 # ── 批量执行 ────────────────────────────────────────────────────────────────
 
+
 def run_batch(
     items: list[dict],
     out_root: str,
@@ -190,10 +202,7 @@ def run_batch(
                     pass
 
     pending = [it for it in items if str(it["id"]) not in done_ids]
-    print(
-        f"  [edp rollout] total={len(items)} done={len(done_ids)} "
-        f"pending={len(pending)} workers={max_api_workers}"
-    )
+    print(f"  [edp rollout] total={len(items)} done={len(done_ids)} pending={len(pending)} workers={max_api_workers}")
 
     if not pending:
         return existing
@@ -249,9 +258,9 @@ def run_batch(
 
             # 处理超时的 future（在 ThreadPool 级别）
             timed_out = [
-                fut for fut in pending_futs - done
-                if str(futs[fut]["id"]) in started_at
-                and now - started_at[str(futs[fut]["id"])] >= task_timeout
+                fut
+                for fut in pending_futs - done
+                if str(futs[fut]["id"]) in started_at and now - started_at[str(futs[fut]["id"])] >= task_timeout
             ]
 
             for fut in done:
@@ -276,9 +285,7 @@ def run_batch(
                 res = _timeout_result(futs[fut])
                 results.append(res)
                 finished += 1
-                print(
-                    f"    {finished}/{len(pending)} id={res['id']:<10} TIMEOUT  dt={time.time()-t0:.0f}s"
-                )
+                print(f"    {finished}/{len(pending)} id={res['id']:<10} TIMEOUT  dt={time.time() - t0:.0f}s")
 
         # ── 写入 results.jsonl ────────────────────────────────────────────
         with open(results_path, "w") as f:

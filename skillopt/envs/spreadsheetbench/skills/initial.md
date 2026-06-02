@@ -12,7 +12,7 @@ Never use any other third-party libraries.
 
 1. **Explore** the input file: list sheets, inspect headers, check dimensions.
 2. **Write `solution.py`** with `INPUT_PATH` and `OUTPUT_PATH` defined at the top.
-3. **Execute** `python solution.py` and verify the output file was created.
+3. **Execute** `python3 solution.py` and verify the output file was created.
 4. **Confirm** the target cells/range contain the expected values.
 
 ---

@@ -7,12 +7,13 @@
 返回的 ``conversation`` 是 SkillOpt Reflect 阶段的输入，用于诊断失败模式。
 格式选择取决于 EDPAgent 的交互方式，三种都支持（最终由 ``fmt_trajectory()`` 归一化）。
 """
+
 from __future__ import annotations
 
 from typing import Any
 
-
 # ── System / User prompt 构建 ──────────────────────────────────────────────
+
 
 def _build_system_prompt(skill_content: str) -> str:
     """构建 EDPAgent 的 system prompt。
@@ -60,6 +61,7 @@ def _build_user_prompt(item: dict, **kwargs) -> str:
 
 
 # ── Agent 执行 ──────────────────────────────────────────────────────────────
+
 
 def run_agent(
     item: dict,
